@@ -3,7 +3,6 @@
 import rospy
 import actionlib
 from assignment_1.search_ids import FindAprilTags
-from assignment_1.navigator import WaypointNavigator
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 

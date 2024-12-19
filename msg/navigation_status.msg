@@ -1,0 +1,1 @@
+bool status # in True the robot start the navigation, else the robot stop (when all IDs were been found)

@@ -58,6 +58,7 @@ add_message_files(
   target_ids.msg
   detected_id.msg
   info_navigation.msg
+  navigation_status.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -167,6 +168,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   src/client.py
   src/server.py
+  src/navigator.py
   #src/search_ids.py
   #src/navigator.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}#

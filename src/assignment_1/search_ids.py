@@ -3,11 +3,10 @@
 import rospy
 import actionlib
 import tf
-from assignment_1.msg import FindAprilTagsAction, FindAprilTagsFeedback, FindAprilTagsResult
+from assignment_1.msg import FindAprilTagsAction, FindAprilTagsFeedback, FindAprilTagsResult, navigation_status
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from apriltag_ros.msg import AprilTagDetectionArray
-from geometry_msgs.msg import PoseStamped
-from assignment_1.navigator import WaypointNavigator
+from geometry_msgs.msg import PoseStamped 
 
 """
 Constructor of the class FindAprilTags. This class is used to handle the recognition of the apriltags and the detection of the their poses with respect 
@@ -26,15 +25,18 @@ class FindAprilTags:
         self.server.start()
         self.result = FindAprilTagsResult()
 
-        # Publisher used to comunicate to the navigator node the ids already found during the motion
-        #self.pub = rospy.Publisher('/found_apriltag_id', detected_id, queue_size = 10) 
+        # Publisher used to comunicate to the navigator node about the reserch status
+        self.pub = rospy.Publisher('/navigation_status', navigation_status, queue_size = 10)
+        self.status_msg = navigation_status()
 
-        self.target_ids = [14, 11] # list of target ids to found
+        # Start the subscriber to tag_detection
+        rospy.Subscriber('/tag_detections', AprilTagDetectionArray, self.detection_callback_tf)
+
+        self.target_ids = [] # list of target ids to found
         self.detected_ids = [] # list of ids already found by Thiago while moving
         self.detected_poses = [] # list of detected poses
 
-    
-        
+        self.listener = tf.TransformListener()
 
 
     """
@@ -44,12 +46,11 @@ class FindAprilTags:
 
     def detection_callback_tf(self, msg):
         # Initialize the TransformListener
-        listener = tf.TransformListener()
         target_frame = "map"
         source_frame = msg.header.frame_id
 
         # Wait until transform is available
-        while not listener.canTransform(target_frame, source_frame, rospy.Time(0)):
+        while not self.listener.canTransform(target_frame, source_frame, rospy.Time(0)):
             rospy.sleep(0.5)
 
         # Perform the transformation
@@ -68,7 +69,7 @@ class FindAprilTags:
                 
                 # Transform the pose in the base_frame
                 try:
-                    pos_out = listener.transformPose(target_frame, pos_in)
+                    pos_out = self.listener.transformPose(target_frame, pos_in)
                 except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
                     rospy.logerr(f"Error during transform: {e}")
 
@@ -93,19 +94,12 @@ class FindAprilTags:
     """
 
     def execute_cb(self, goal):
-        #self.target_ids = goal.target_ids.ids
+        self.target_ids = goal.target_ids.ids
 
-
-
-
-        # Start the subscriber to tag_detection
-        rospy.Subscriber('/tag_detections', AprilTagDetectionArray, self.detection_callback_tf)
-
+        self.status_msg.status = True
+        self.pub.publish(self.status_msg)
 
         rospy.loginfo("Search for Apriltags started!")
-
-        navigator = WaypointNavigator()
-        navigator.run()
 
       # Execute the action
         rate = rospy.Rate(1)  
@@ -123,7 +117,8 @@ class FindAprilTags:
                 # Check when all the ids are been found
                 if len(self.detected_ids) == len(self.target_ids):
                     rospy.loginfo("All AprilTags are been found! Stopping the navigation...")
-                    navigator.stop_navigation(True)
+                    self.status_msg.status = False
+                    self.pub.publish(self.status_msg)
                     break
 
                 rate.sleep() 
