@@ -27,7 +27,7 @@ class FindAprilTags:
         self.server.start()
 
         # Class variables
-        self.target_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] # list of target ids to found
+        self.target_ids = [] # list of target ids to found
         self.detected_ids = [] # list of ids already found by Thiago while moving
         self.detected_poses = [] # list of detected poses
 
@@ -50,7 +50,7 @@ class FindAprilTags:
 
     def execute_cb(self, goal):
         # Save the received target IDs 
-        #self.target_ids = goal.target_ids.ids
+        self.target_ids = goal.target_ids.ids
 
         # Inform the navigator node that it can start the navigation
         self.status_msg.status = True
@@ -62,6 +62,8 @@ class FindAprilTags:
         flag = False
 
         try:
+            timeout_duration = rospy.Duration(150)  # Timeout of 2 minutes and half to complete the searching
+            start_time = rospy.Time.now()
             rate = rospy.Rate(1)
 
             while not rospy.is_shutdown():
@@ -79,6 +81,13 @@ class FindAprilTags:
                     self.status_msg.status = False
                     self.pub.publish(self.status_msg)
                     flag = True # Set flag to True to indicate that the action has been completed
+                    break
+                
+                # Timeout check (if in 150 seconds the searching is not done the action is considered as failed)
+                if rospy.Time.now() - start_time > timeout_duration:
+                    self.server.set_aborted()
+                    self.status_msg.status = False
+                    self.pub.publish(self.status_msg)
                     break
 
                 rate.sleep() 
@@ -100,8 +109,7 @@ class FindAprilTags:
 
             rospy.signal_shutdown("Action completed successfully! Stopping the server node...")
         else:
-            rospy.loginfo("Action failed!")
-
+            rospy.signal_shutdown("Action failed! Stopping the server node...")
 
     """
     Callback function of AprilTags detection. This function is called every time that a message will be published on topic /tag_detections. 

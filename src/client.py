@@ -65,8 +65,11 @@ def done_callback(state, result):
 
             rospy.loginfo(f"AprilTag ID {result.found_ids[i]} position: x = {position.x:.2f}, y = {position.y:.2f}, orientation(yaw angle) = {yaw:.2f} rad")
 
+    elif state == actionlib.GoalStatus.PREEMPTED:
+        rospy.logerr(f"\n The action was preempted by the client!")
+
     else:
-        rospy.logerr(f"\n The action was not completed successfully!")
+        rospy.logerr(f"\n The action was aborted by the server! Time limit probably exceeded!")
 
 
 
@@ -91,14 +94,7 @@ if __name__ == '__main__':
 
         client.send_goal(goal, feedback_cb = feedback_callback, done_cb = done_callback)
 
-        # Publisher used to inform the navigator node that the target ids are been received and hence the navigation can start
-        #pub_target = rospy.Publisher('/target_apriltag_ids', target_ids, queue_size = 10) 
-        #target_msg = target_ids()
-        #target_msg.ids = list(target)
-        #pub_target.publish(target_msg)
-
         client.wait_for_result()
-
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Node_a_client stop the execution!")

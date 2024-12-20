@@ -21,10 +21,10 @@ class WaypointNavigator:
 
         # Waypoints definition
         self.waypoints = [
-            {"x": 0.0, "y": 0.0, "yaw": -1.57},
-            {"x": 8.5, "y": -1.5, "yaw": 3.14},
-            {"x": 8.5, "y": -3.5, "yaw": 3.14},
-            {"x": 12.5, "y": -3, "yaw": -0.8},
+            {"x": 0.0, "y": 0.0, "yaw": -2},
+            {"x": 8.5, "y": -1, "yaw": 3.14},
+            {"x": 8.5, "y": -3, "yaw": 3.14},
+            {"x": 11.5, "y": -3.3, "yaw": -0.5},
             {"x": 12.5, "y": -0.5, "yaw": 3.14},
             {"x": 12.5, "y": 0.5, "yaw": 1.57},
             {"x": 10, "y": 0.6, "yaw": 3.14}
@@ -44,7 +44,7 @@ class WaypointNavigator:
 
     def send_next_waypoint(self):
         if self.current_waypoint_index >= len(self.waypoints):
-            #rospy.loginfo("All waypoints reached!")
+            rospy.signal_shutdown("Stopping the navigator node...")
             return
 
         waypoint = self.waypoints[self.current_waypoint_index]
@@ -73,23 +73,28 @@ class WaypointNavigator:
     """
 
     def goal_done_callback(self, status, result):
-        if status != actionlib.GoalStatus.PREEMPTED:
+        if status == actionlib.GoalStatus.ABORTED:
+            rospy.signal_shutdown("Navigation aborted by the action server! Stoping the navigator node...")
+        elif status == actionlib.GoalStatus.PREEMPTED:
+            rospy.signal_shutdown("Stopping the navigator node...")
+        else:
             rospy.loginfo(f"Waypoint {self.current_waypoint_index} reached!")
             self.current_waypoint_index += 1
             self.send_next_waypoint()
-        else:
-            rospy.signal_shutdown("Stopping the navigator node...")
 
     """
-    Method used to check when all IDs are been found
+    Callback of the subscriber /research_status. It starts the navigation when the IDs are received and stop it when all the target IDs are detected.
     """
 
     def research_status_cb(self, msg):
         if msg.status:
             self.send_next_waypoint()
         else:
-            rospy.loginfo("Navigation stopped! All IDs found.")
-            self.client.cancel_goal()
+            rospy.loginfo("All IDs found!")
+            state = self.client.get_state()
+            # Check to avoid errors with the last waypoint in case all the IDs haven't all been found yet
+            if state == actionlib.GoalStatus.ACTIVE:
+                self.client.cancel_goal()
 
 
 
