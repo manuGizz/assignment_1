@@ -56,9 +56,8 @@ catkin_python_setup()
 add_message_files(
   FILES
   target_ids.msg
-  detected_id.msg
   info_navigation.msg
-  navigation_status.msg
+  research_status.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -1,1 +1,0 @@
-int32 detected_id  # Target ID found while moving
